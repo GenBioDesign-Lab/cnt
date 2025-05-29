@@ -3126,7 +3126,7 @@ class ACTopol(AbstractTopol):
         self.tleapExe = _getoutput('which tleap') or ''
         self.sleapExe = _getoutput('which sleap') or ''
         self.parmchkExe = _getoutput('which parmchk') or ''
-        self.babelExe = _getoutput('which babel') or ''
+        self.babelExe = _getoutput('which obabel') or ''
         if not os.path.exists(self.babelExe):
             if self.ext != '.mol2' and self.ext != '.mdl':  # and self.ext != '.mol':
                 self.printError("no 'babel' executable; you need it if input is PDB")
