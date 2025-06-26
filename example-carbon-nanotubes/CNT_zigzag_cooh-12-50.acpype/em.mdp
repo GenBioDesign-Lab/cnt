@@ -1,5 +1,0 @@
-; to test
-; grompp -f em.mdp -c CNT_zigzag_cooh-12-50_GMX.gro -p CNT_zigzag_cooh-12-50_GMX.top -o em.tpr -v
-; mdrun -v -deffnm em
-integrator               = steep
-nsteps                   = 500

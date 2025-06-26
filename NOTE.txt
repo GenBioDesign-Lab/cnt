@@ -5,3 +5,5 @@ To use the acpype to create CNT force fields and create PDB file, don't use the 
 1. pip: pip install acpype
 2. Clone and use the run_acpype.py in this resporitory: https://github.com/alanwilter/acpype
 3. Done
+
+## Acepype on HPC will cause missing results
