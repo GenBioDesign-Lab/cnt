@@ -1,52 +1,12 @@
 '''
-buildCstruct 1.2 - Armchair CNT Only
+buildCstruct
 
-Modified for Python 3 and armcnt only
 Modified by: mdanh
 Date: June 26th 2025
 
 Original authors:
 Authors: Andrea Minoia, Martin Voegele
 Date: January 27th 2018
-********************************************
-Description:
-    Build armchair carbon nanotube structures. Non-periodic structures are 
-    saturated with hydrogens. Functional groups (OH, COOH, COO-) can be added.
-
-Syntax:
-    buildCstruct.py [options] outfile
-
-    The available options are:
-    --version
-        shows program's version number and exit.
-
-    -c, --credits
-        display credits.
-
-    -g, --geometry
-        specify the geometry: -g index_n cnt_length
-        Size_x, size_y and cnt_length are in Angstrom.
-
-    -f, --functionalization
-        specify the functionalization: none, oh, cooh, coo
-
-    --xyz
-        save structure in XYZ format.
-
-    --gro
-        save structure in gromacs GRO format.
-
-    --mol2
-        save structure in mol2 format.
-
-    outfile
-    is the name of the file where to save the structure.
-
-Requirements:
-    Require numpy installed
-
-License:
-    Freeware. You can use, modify and redistribute the source.
 '''
 
 # import modules
@@ -91,10 +51,10 @@ def backup_file(file):
         system('mv '+tmpvar+' '+file)
 
 def parsecmd():
-    description = "Build armchair carbon nanotube structures.\n Output file can be saved in TINKER, XYZ, MOL2 or Gromacs GRO formats.\n"
+    description = "Build armchair carbon nanotube structures (Distance-based bond detection).\n Output file can be saved in TINKER, XYZ, MOL2 or Gromacs GRO formats.\n"
     usage = "usage: %prog [options] output_file"
     # parse command line
-    parser = OP(version='%prog 1.2', description=description, usage=usage)
+    parser = OP(version='%prog 1.2-distance', description=description, usage=usage)
     
     parser.add_option('-c', '--credits', dest='credits', action='store_true',
                      default=False, help='display credits')
@@ -454,8 +414,8 @@ def add_H(coords, natx, funct_OH):
             tmpcoords.append(h1charge)
             coords.append(tmpcoords)
 
-def connect(coords, natx, nohcoords):
-    '''build connectivity for nanotube'''
+def connect_distance(coords, natx, nohcoords):
+    '''build connectivity for nanotube using distance-based method with atom type checking'''
     Ccov_r = 0.77  # covalent radius carbon
     Hcov_r = 0.32  # covalent radius Hydrogen
     Ocov_r = 0.66  # covalent radius Oxygen
@@ -471,6 +431,9 @@ def connect(coords, natx, nohcoords):
     connect = zeros((len(coords), 3), int)  # init connectivity matrix
     bondlist = []
     bondnumber = 0
+    
+    print("Using DISTANCE-BASED bond detection with atom type checking")
+    
     # find connectivity, based on distance
     for i in range(len(coords)):
         for j in range(i+1, i+2*natx):
@@ -500,10 +463,38 @@ def connect(coords, natx, nohcoords):
                 at1 = [coords[i][1], coords[i][2], coords[i][3]]
                 at2 = [coords[j][1], coords[j][2], coords[j][3]]
                 bond = getdist(at1, at2)
-                if ((bond >= bondch[0] and bond < bondch[1]) or 
-                    (bond >= bondco[0] and bond < bondco[1]) or 
-                    (bond >= bondoh[0] and bond < bondoh[1]) or 
-                    (coords[i][0] == 'C' and coords[j][0] == 'C' and bond >= bondcc[0] and bond < bondcc[1])):
+                
+                # Get atom types
+                atom1_type = coords[i][0]
+                atom2_type = coords[j][0]
+                
+                # Check for valid bond types with proper atom type checking
+                valid_bond = False
+                
+                # C-H bonds: only between C and H
+                if ((atom1_type == 'C' and atom2_type == 'H') or 
+                    (atom1_type == 'H' and atom2_type == 'C')) and \
+                   (bond >= bondch[0] and bond < bondch[1]):
+                    valid_bond = True
+                
+                # C-O bonds: only between C and O
+                elif ((atom1_type == 'C' and atom2_type == 'O') or 
+                      (atom1_type == 'O' and atom2_type == 'C')) and \
+                     (bond >= bondco[0] and bond < bondco[1]):
+                    valid_bond = True
+                
+                # O-H bonds: only between O and H
+                elif ((atom1_type == 'O' and atom2_type == 'H') or 
+                      (atom1_type == 'H' and atom2_type == 'O')) and \
+                     (bond >= bondoh[0] and bond < bondoh[1]):
+                    valid_bond = True
+                
+                # C-C bonds: only between C and C (for functional groups)
+                elif (atom1_type == 'C' and atom2_type == 'C') and \
+                     (bond >= bondcc[0] and bond < bondcc[1]):
+                    valid_bond = True
+                
+                if valid_bond:
                     if i < j:
                         bondnumber += 1
                         tmpbond = [bondnumber, i+1, j+1, '1']
@@ -520,11 +511,13 @@ def connect(coords, natx, nohcoords):
                             break
                         else:
                             pass
+    
+    print(f"Distance-based method found {len(bondlist)} bonds")
     return connect, bondlist
 
 def write_xyz(file, data):
     '''Write a xyz file'''
-    file.write(" "+str(len(data))+"\nGenerated by buildCstruct - Armchair CNT\n")
+    file.write(" "+str(len(data))+"\nGenerated by buildCstruct - Armchair CNT (Distance-based)\n")
     for line in data:
        outline = "%-3s%12.6f%12.6f%12.6f" % (line[0], float(line[1]), float(line[2]), float(line[3]))
        file.write(outline+"\n")
@@ -532,7 +525,7 @@ def write_xyz(file, data):
 
 def write_gro(file, data, pbc1=""):
     '''Write a gromacs gro file'''
-    file.write("Generated by buildCstruct - Armchair CNT\n "+str(len(data))+"\n")
+    file.write("Generated by buildCstruct - Armchair CNT (Distance-based)\n "+str(len(data))+"\n")
     for index, line in enumerate(data):
        outline = "%5i%-5s%5s%5i%8.3f%8.3f%8.3f" % (1, "CNT1", line[0], index, float(line[1])/10.0, float(line[2])/10.0, float(line[3])/10.0)
        file.write(outline+"\n")
@@ -545,7 +538,7 @@ def write_gro(file, data, pbc1=""):
 
 def write_mol2(file, data, bondlist):
     '''Write a mol2 file'''
-    file.write("@<TRIPOS>MOLECULE\nCNT\n "+str(len(data))+" "+str(len(bondlist))+" 0 0 0\nSMALL\nUSER_CHARGES\n\n@<TRIPOS>ATOM\n")
+    file.write("@<TRIPOS>MOLECULE\nCNT_Distance\n "+str(len(data))+" "+str(len(bondlist))+" 0 0 0\nSMALL\nUSER_CHARGES\n\n@<TRIPOS>ATOM\n")
     for index, line in enumerate(data):
        outline = "%7i %5s %8.3f %8.3f %8.3f %7s %7i %7s %8.3f" % (index+1, line[0], float(line[1]), float(line[2]), float(line[3]), line[4], 1, "CNT1", float(line[5]))
        file.write(outline+"\n")
@@ -583,7 +576,7 @@ def main():
     print('saving structure...')
     
     if (not options.xyz and not options.gro) or options.mol2:
-        conn, bondlist = connect(coords, natx, nohcoords)  # get connectivity
+        conn, bondlist = connect_distance(coords, natx, nohcoords)  # get connectivity
     
     backup_file(ofile)
     print('*******************************')
@@ -602,6 +595,4 @@ def main():
     exit(0)
     
 if __name__ == "__main__":
-    main()
-
-
+    main() 
