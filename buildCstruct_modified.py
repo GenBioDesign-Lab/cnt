@@ -1,63 +1,31 @@
 '''
-buildCstruct
-
-Modified by: mdanh
-Date: June 26th 2025
-
-Original authors:
-Authors: Andrea Minoia, Martin Voegele
-Date: January 27th 2018
+buildCstruct - Modified by: mdanh
+Build armchair carbon nanotube structures with distance-based bond detection
 '''
 
-# import modules
-from sys import argv, exit, path, version
+from sys import argv, exit
 from optparse import OptionParser as OP
 try:
-    from numpy import zeros, pi, sin, cos, modf, ceil, sqrt
+    from numpy import zeros, pi, sin, cos, modf, sqrt
 except:
-    print("Numpy not installed or not in python path. I give up...")
+    print("Numpy not installed. Exiting...")
     exit(10)
 from os import path as path_os
-from os import system
 
 def getdist(at1, at2):
-    ''' Calculate distance between two particles '''
+    '''Calculate distance between two particles'''
     dist_at = sqrt((at2[0]-at1[0])**2+(at2[1]-at1[1])**2+(at2[2]-at1[2])**2)
     return dist_at
 
 def filecheck(file):
-    ''' Check if infile exists '''
-    if path_os.isfile(file) == 0:
-        found = False
-    else:
-        found = True
-    return found
-
-def backup_file(file):
-    '''check if file exists. if not open file
-    for writing, otherwise backup the old one in
-    #infile_x# with x progressive number
-    '''
-    tmpvar = file
-    count = 0
-    while 1:
-        found = filecheck(file)
-        if found:
-            count += 1
-            file = tmpvar+'_bak-'+str(count)
-        else:
-            break
-    if file != tmpvar:
-        system('mv '+tmpvar+' '+file)
+    '''Check if file exists'''
+    return path_os.isfile(file)
 
 def parsecmd():
-    description = "Build armchair carbon nanotube structures (Distance-based bond detection).\n Output file can be saved in TINKER, XYZ, MOL2 or Gromacs GRO formats.\n"
+    description = "Build armchair carbon nanotube structures"
     usage = "usage: %prog [options] output_file"
-    # parse command line
     parser = OP(version='%prog 1.2-distance', description=description, usage=usage)
     
-    parser.add_option('-c', '--credits', dest='credits', action='store_true',
-                     default=False, help='display credits')
     parser.add_option('-g', '--geometry', dest='geometry', nargs=2, type='float',
                       help='define the geometry: index_n cnt_length')
     parser.add_option('-f', '--funct', dest='functionalization', default='none',
@@ -70,26 +38,16 @@ def parsecmd():
                       help='write mol2 file')
     (options, args) = parser.parse_args(argv[1:])
     
-    # manage parse errors
-    if options.credits:  # display credits and quit
-        credits = "\n**********************************\n\
-    Andrea Minoia, Martin Voegele\n\
-    Contacts: minoiaa_at_gmail.com\
-              http://chembytes.wikidot.com\
-\n*********************************\n"
-        print(credits)
-        exit(0)
-
-    if len(args) == 0:   # arguments missing
+    if len(args) == 0:
         parser.exit(parser.print_help())
     
-    if len(args) > 1:  # check if more than one argument (NOT OPTION) has been parsed
-        parser.error('You have given me more than one argument '+str(args)+'... dunno what to do...\n')
+    if len(args) > 1:
+        parser.error('Too many arguments provided')
     
     return options, args
 
 def armcnt(n, l, ccbond, funct):
-    ''' build armchair carbon nanotube '''
+    '''Build armchair carbon nanotube'''
     atc = []
     circ1 = []
     circ2 = []
@@ -115,22 +73,21 @@ def armcnt(n, l, ccbond, funct):
     radius = (n*(2*dx+ccbond)+n*ccbond)/(2*pi)
     ycoord = +dy
     natoms = 2*n
-    # create circumferences
+    
     for i in range(n):
         circ1.append(2*dx+ccbond)
         circ1.append(ccbond)
         circ2.append(ccbond)
         circ2.append(2*dx+ccbond)
-    # adjust the circumferences
+    
     circ1.insert(0, 0.0)
     circ1.pop()
     circ2.insert(0, dx)
     circ2.pop()
-    # Build CNT
+    
     while ycoord > -l:
         ycoord -= dy
         arc = 0.0
-        # Assign suitable charges to the first and last two carbon rings
         if ycoord == 0:
             ccharge_circ1a = c1acharge
             ccharge_circ1 = c1charge
@@ -146,7 +103,7 @@ def armcnt(n, l, ccbond, funct):
             ccharge_circ2 = cmcharge   
             ccharge_circ1a = cmcharge
             ccharge_circ2a = cmcharge 
-        # Make coordinates
+        
         for i in range(natoms):
             if modf(float(i)/2.0)[0] == 0:
                 newccharge = ccharge_circ1a
@@ -192,9 +149,9 @@ def add_COO(coords, natx, is_protonated):
     Ocov_r = 0.66
     Ccov_r = 0.77
 
-    chbond = Hcov_r+Ccov_r  # 1.087 
-    cobond = Ccov_r+Ocov_r  # 1.362
-    ohbond = Ocov_r+Hcov_r  # 0.974
+    chbond = Hcov_r+Ccov_r
+    cobond = Ccov_r+Ocov_r
+    ohbond = Ocov_r+Hcov_r
     ccbond = 2*Ccov_r
 
     if is_protonated:
@@ -214,7 +171,7 @@ def add_COO(coords, natx, is_protonated):
     Cxz = ccbond*cos(120/2*pi/180)
     Cy1 = ccbond*sin(120/2*pi/180)
         
-    for i in range(natx):  # upper border
+    for i in range(natx):
         Hx1 = Hxz*cos(i*2*pi/natx)
         Hz1 = Hxz*sin(i*2*pi/natx)
         Cx1 = Cxz*cos(i*2*pi/natx)
@@ -227,7 +184,7 @@ def add_COO(coords, natx, is_protonated):
         Oy2 = Cy1
         HOx = ohbond*cos(i*2*pi/natx+pi/4)
         HOz = ohbond*sin(i*2*pi/natx+pi/4)
-        if modf(float(i)/2.0)[0] == 0:  # COO- is added to every second C 
+        if modf(float(i)/2.0)[0] == 0:
             tmpcoords = ['C']
             tmpcoords.append(coords[i][1]+Cx1) 
             tmpcoords.append(coords[i][2]+Cy1)
@@ -271,7 +228,7 @@ def add_COO(coords, natx, is_protonated):
     else:
         added_atoms = int(2*natx)
 
-    for i in range(len(coords)-added_atoms-natx, len(coords)-added_atoms):  # bottom border
+    for i in range(len(coords)-added_atoms-natx, len(coords)-added_atoms):
         Hx1 = Hxz*cos(i*2*pi/natx)
         Hz1 = Hxz*sin(i*2*pi/natx)
         Cx1 = Cxz*cos(i*2*pi/natx)
@@ -284,9 +241,9 @@ def add_COO(coords, natx, is_protonated):
         Oy2 = Cy1
         HOx = ohbond*cos(i*2*pi/natx+pi/4)
         HOz = ohbond*sin(i*2*pi/natx+pi/4)
-        if modf(float(i)/2.0)[0] == 0:  # COO- is added to every second C 
+        if modf(float(i)/2.0)[0] == 0:
             tmpcoords = ['C']
-            tmpcoords.append(coords[i][1]+Cx1)  # update x even
+            tmpcoords.append(coords[i][1]+Cx1)
             tmpcoords.append(coords[i][2]-Cy1)
             tmpcoords.append(coords[i][3]+Cz1)
             tmpcoords.append('C.2')
@@ -329,9 +286,9 @@ def add_H(coords, natx, funct_OH):
     Ocov_r = 0.66
     Ccov_r = 0.77
     
-    chbond = Hcov_r+Ccov_r  # 1.087 
-    cobond = Ccov_r+Ocov_r  # 1.362
-    ohbond = Ocov_r+Hcov_r  # 0.974
+    chbond = Hcov_r+Ccov_r
+    cobond = Ccov_r+Ocov_r
+    ohbond = Ocov_r+Hcov_r
 
     Hxz = chbond*cos(120/2*pi/180)
     Hy1 = chbond*sin(120/2*pi/180)
@@ -345,7 +302,7 @@ def add_H(coords, natx, funct_OH):
     else:
         h1charge = 0.13
 
-    for i in range(natx):  # upper border
+    for i in range(natx):
         Hx1 = Hxz*cos(i*2*pi/natx)
         Hz1 = Hxz*sin(i*2*pi/natx)
         Ox1 = Oxz*cos(i*2*pi/natx)
@@ -383,7 +340,7 @@ def add_H(coords, natx, funct_OH):
     else:
         added_atoms = natx
 
-    for i in range(len(coords)-added_atoms-natx, len(coords)-added_atoms):  # bottom border
+    for i in range(len(coords)-added_atoms-natx, len(coords)-added_atoms):
         Hx1 = Hxz*cos(i*2*pi/natx)
         Hz1 = Hxz*sin(i*2*pi/natx)
         Ox1 = Oxz*cos(i*2*pi/natx)
@@ -392,14 +349,14 @@ def add_H(coords, natx, funct_OH):
         Hz2 = Oz1+ohbond*sin(i*2*pi/natx)
         if modf(float(i)/2.0)[0] == 0 and funct_OH:
             tmpcoords = ['O']
-            tmpcoords.append(coords[i][1]+Ox1)  # update x even
+            tmpcoords.append(coords[i][1]+Ox1)
             tmpcoords.append(coords[i][2]-Oy1)
             tmpcoords.append(coords[i][3]+Oz1)
             tmpcoords.append('O.3')
             tmpcoords.append(o1charge)
             coords.append(tmpcoords)
             tmpcoords = ['H']
-            tmpcoords.append(coords[i][1]+Hx2)  # update x even
+            tmpcoords.append(coords[i][1]+Hx2)
             tmpcoords.append(coords[i][2]-Oy1)
             tmpcoords.append(coords[i][3]+Hz2)
             tmpcoords.append('H')
@@ -407,7 +364,7 @@ def add_H(coords, natx, funct_OH):
             coords.append(tmpcoords)
         else:
             tmpcoords = ['H']
-            tmpcoords.append(coords[i][1]+Hx1)  # update x odd
+            tmpcoords.append(coords[i][1]+Hx1)
             tmpcoords.append(coords[i][2]-Hy1)
             tmpcoords.append(coords[i][3]+Hz1)
             tmpcoords.append('H')
@@ -415,26 +372,23 @@ def add_H(coords, natx, funct_OH):
             coords.append(tmpcoords)
 
 def connect_distance(coords, natx, nohcoords):
-    '''build connectivity for nanotube using distance-based method with atom type checking'''
-    Ccov_r = 0.77  # covalent radius carbon
-    Hcov_r = 0.32  # covalent radius Hydrogen
-    Ocov_r = 0.66  # covalent radius Oxygen
+    '''Build connectivity using distance-based method with atom type checking'''
+    Ccov_r = 0.77
+    Hcov_r = 0.32
+    Ocov_r = 0.66
 
-    btollcc = (2*Ccov_r)*15/100  # bond tolerance of 15%
-    btollch = (Hcov_r+Ccov_r)*5/100  # bond tolerance of 5% 
-    btolloh = (Hcov_r+Ocov_r)*5/100  # bond tolerance of 5% 
-    btollco = (Ccov_r+Ocov_r)*5/100  # bond tolerance of 5% 
+    btollcc = (2*Ccov_r)*15/100
+    btollch = (Hcov_r+Ccov_r)*5/100
+    btolloh = (Hcov_r+Ocov_r)*5/100
+    btollco = (Ccov_r+Ocov_r)*5/100
     bondcc = [2*Ccov_r-btollcc, 2*Ccov_r+btollcc]
     bondch = [(Hcov_r+Ccov_r)-btollch, (Hcov_r+Ccov_r)+btollch]
     bondco = [(Ocov_r+Ccov_r)-btollco, (Ocov_r+Ccov_r)+btollco]
     bondoh = [(Hcov_r+Ocov_r)-btolloh, (Hcov_r+Ocov_r)+btolloh]
-    connect = zeros((len(coords), 3), int)  # init connectivity matrix
+    connect = zeros((len(coords), 3), int)
     bondlist = []
     bondnumber = 0
     
-    print("Using DISTANCE-BASED bond detection with atom type checking")
-    
-    # find connectivity, based on distance
     for i in range(len(coords)):
         for j in range(i+1, i+2*natx):
             if j < nohcoords:
@@ -448,48 +402,38 @@ def connect_distance(coords, natx, nohcoords):
                         bondlist.append(tmpbond)
                     for k in range(3):
                         if connect[i][k] == 0:
-                            connect[i][k] = j+1   # index run from zero, not 1
+                            connect[i][k] = j+1
                             break
-                        else:
-                            pass
                     for k in range(3):
                         if connect[j][k] == 0:
-                            connect[j][k] = i+1   # index run from zero, not 1
+                            connect[j][k] = i+1
                             break
-                        else:
-                            pass
-        if len(coords) != nohcoords:  # there are hydrogens
+        if len(coords) != nohcoords:
             for j in range(nohcoords, len(coords)):
                 at1 = [coords[i][1], coords[i][2], coords[i][3]]
                 at2 = [coords[j][1], coords[j][2], coords[j][3]]
                 bond = getdist(at1, at2)
                 
-                # Get atom types
                 atom1_type = coords[i][0]
                 atom2_type = coords[j][0]
                 
-                # Check for valid bond types with proper atom type checking
                 valid_bond = False
                 
-                # C-H bonds: only between C and H
                 if ((atom1_type == 'C' and atom2_type == 'H') or 
                     (atom1_type == 'H' and atom2_type == 'C')) and \
                    (bond >= bondch[0] and bond < bondch[1]):
                     valid_bond = True
                 
-                # C-O bonds: only between C and O
                 elif ((atom1_type == 'C' and atom2_type == 'O') or 
                       (atom1_type == 'O' and atom2_type == 'C')) and \
                      (bond >= bondco[0] and bond < bondco[1]):
                     valid_bond = True
                 
-                # O-H bonds: only between O and H
                 elif ((atom1_type == 'O' and atom2_type == 'H') or 
                       (atom1_type == 'H' and atom2_type == 'O')) and \
                      (bond >= bondoh[0] and bond < bondoh[1]):
                     valid_bond = True
                 
-                # C-C bonds: only between C and C (for functional groups)
                 elif (atom1_type == 'C' and atom2_type == 'C') and \
                      (bond >= bondcc[0] and bond < bondcc[1]):
                     valid_bond = True
@@ -501,31 +445,25 @@ def connect_distance(coords, natx, nohcoords):
                         bondlist.append(tmpbond)
                     for k in range(3):
                         if connect[i][k] == 0:
-                            connect[i][k] = j+1   # index run from zero, not 1
+                            connect[i][k] = j+1
                             break
-                        else:
-                            pass
                     for k in range(3):
                         if connect[j][k] == 0:
-                            connect[j][k] = i+1   # index run from zero, not 1
+                            connect[j][k] = i+1
                             break
-                        else:
-                            pass
     
-    print(f"Distance-based method found {len(bondlist)} bonds")
     return connect, bondlist
 
 def write_xyz(file, data):
-    '''Write a xyz file'''
-    file.write(" "+str(len(data))+"\nGenerated by buildCstruct - Armchair CNT (Distance-based)\n")
+    '''Write xyz file'''
+    file.write(" "+str(len(data))+"\nGenerated by buildCstruct - Armchair CNT\n")
     for line in data:
        outline = "%-3s%12.6f%12.6f%12.6f" % (line[0], float(line[1]), float(line[2]), float(line[3]))
        file.write(outline+"\n")
-    return
 
 def write_gro(file, data, pbc1=""):
-    '''Write a gromacs gro file'''
-    file.write("Generated by buildCstruct - Armchair CNT (Distance-based)\n "+str(len(data))+"\n")
+    '''Write gromacs gro file'''
+    file.write("Generated by buildCstruct - Armchair CNT\n "+str(len(data))+"\n")
     for index, line in enumerate(data):
        outline = "%5i%-5s%5s%5i%8.3f%8.3f%8.3f" % (1, "CNT1", line[0], index, float(line[1])/10.0, float(line[2])/10.0, float(line[3])/10.0)
        file.write(outline+"\n")
@@ -534,10 +472,9 @@ def write_gro(file, data, pbc1=""):
     else:
         outline = "  10   "+str(float(pbc1)/10.0)+"   10\n"
     file.write(outline+"\n")
-    return
 
 def write_mol2(file, data, bondlist):
-    '''Write a mol2 file'''
+    '''Write mol2 file'''
     file.write("@<TRIPOS>MOLECULE\nCNT_Distance\n "+str(len(data))+" "+str(len(bondlist))+" 0 0 0\nSMALL\nUSER_CHARGES\n\n@<TRIPOS>ATOM\n")
     for index, line in enumerate(data):
        outline = "%7i %5s %8.3f %8.3f %8.3f %7s %7i %7s %8.3f" % (index+1, line[0], float(line[1]), float(line[2]), float(line[3]), line[4], 1, "CNT1", float(line[5]))
@@ -547,22 +484,17 @@ def write_mol2(file, data, bondlist):
     for line in bondlist:
        outline = "%7i %7i %7i %7s" % (line[0], line[1], line[2], line[3])
        file.write(outline+"\n")
-    return
 
 def main():
     '''Main function'''
-    ccbond = 1.3874  # C-C bond length
+    ccbond = 1.3874
     
     (options, args) = parsecmd()
-
-    ofile = args[0]  # get output file to save structure
-
+    ofile = args[0]
     funct = options.functionalization.lower()
 
-    # Build armchair CNT
     coords, natx, pbc_l, nohcoords = armcnt(int(options.geometry[0]), float(options.geometry[1]), ccbond, funct)
     
-    # Add functionalization
     if funct == "coo":
         add_COO(coords, natx, False)
     elif funct == "cooh":
@@ -573,23 +505,21 @@ def main():
         add_H(coords, natx, False)
     
     print('Atoms: ', len(coords))
-    print('saving structure...')
     
-    if (not options.xyz and not options.gro) or options.mol2:
-        conn, bondlist = connect_distance(coords, natx, nohcoords)  # get connectivity
+    if not (options.xyz or options.gro):
+        conn, bondlist = connect_distance(coords, natx, nohcoords)
     
-    backup_file(ofile)
     print('*******************************')
     OUT = open(ofile, 'w')
     
     if options.xyz:
         write_xyz(OUT, coords)
-    elif options.mol2:
-        write_mol2(OUT, coords, bondlist)
     elif options.gro:
         write_gro(OUT, coords, pbc_l)
     else:
-        write_xyz(OUT, coords)  # default to xyz
+        if 'bondlist' not in locals():
+            conn, bondlist = connect_distance(coords, natx, nohcoords)
+        write_mol2(OUT, coords, bondlist)
    
     OUT.close()
     exit(0)
